@@ -1,6 +1,7 @@
 const questionField = document.querySelector('#question');
 const btn = document.querySelector('button');
 const scoreOutput = document.querySelector('.score');
+const wrongAnswersList = document.querySelector('.wrong-answers');
 
 const questions = [
     {
@@ -100,15 +101,14 @@ let userAnswers = [];
 let askedQuestions = [];
 let currentQuestion = null;
 let selectedCheckboxes = [];
+let wrongAnswers = [];
 
-// Update score display
-function updateScore() {
+function printScore() {
     const total = points.reduce((sum, value) => sum + value, 0);
-    scoreOutput.innerHTML = `POINTS: ${total}`;
+    scoreOutput.innerHTML = `POINTS: ${total}/${askedQuestions.length}`;
 }
 
-// Handle answer checking
-function handleAnswer(answer, question) {
+function answerChecker(answer, question) {
     let correct = question.correct;
     let isCorrect;
 
@@ -122,64 +122,76 @@ function handleAnswer(answer, question) {
 
     points.push(isCorrect ? 1 : 0);
     userAnswers.push(answer);
-
-    console.log("ANSWER:", answer);
-    console.log("CORRECT?", isCorrect);
-
     
+    if (!isCorrect) {
+        wrongAnswers.push({
+            questionText: question.text,
+            userAnswer: answer,
+            correctAnswer: question.correct
+        });
+    }
 }
 
-// Main button click
-// btn.addEventListener('click', () => {
-    // If current question is a checkbox, submit its answer
+btn.addEventListener('click', () => {
+    btn.innerText = 'NEXT QUESTION';
+
     if (currentQuestion && currentQuestion.type === 'checkboxQues') {
-        handleAnswer(selectedCheckboxes, currentQuestion);
+        answerChecker(selectedCheckboxes, currentQuestion);
     }
 
     questionField.innerHTML = "";
     selectedCheckboxes = [];
+    wrongAnswersList.innerHTML = "";
 
-    let finishedQuiz = () => {
-        if (questions.length === 0) {
-            questionField.innerText = "Quiz färdigt!";
-            btn.style.display = 'none';
-            updateScore();
-            return;
-        }
+    if (questions.length === 0) {
+        questionField.innerText = "Quiz DONE!";
+        btn.style.display = 'none';
+        printScore();
+
+        wrongAnswers.forEach(item => {
+            const wrong = document.createElement('div');
+            wrong.style.borderTop = '1px solid black';
+
+            wrong.innerHTML = `
+                <p><strong>Question:</strong> ${item.questionText}</p>
+                <p><strong>Your Answer:</strong><p class='green-p'>${item.userAnswer}</p></p>
+                <p><strong>Correct Answer:</strong><p class='red-p'>${item.correctAnswer}</p></p>
+            `;
+
+            wrongAnswersList.append(wrong);
+        });
+        return;
     }
 
-
-    // Pick random question
     let currentIndex = Math.floor(Math.random() * questions.length);
     currentQuestion = questions[currentIndex];
 
-    // Remove from pool
     askedQuestions.push(currentQuestion);
     questions.splice(currentIndex, 1);
 
-    // Show question text
     const qText = document.createElement("p");
     qText.innerText = currentQuestion.text;
     questionField.append(qText);
 
-    // MULTIPLE CHOICE + TRUE/FALSE
     if (currentQuestion.type === 'multipleChoice' || currentQuestion.type === 'trueOrFalse') {
         currentQuestion.choices.forEach(option => {
             const answerBtn = document.createElement('button');
             answerBtn.innerText = option;
 
-            answerBtn.addEventListener('click', () => handleAnswer(option, currentQuestion));
+            answerBtn.addEventListener('click', () => {
+                answerChecker(option, currentQuestion);
+                btn.click();
+            });
 
             questionField.append(answerBtn);
         });
-    } 
-    // CHECKBOX
+    }
     else if (currentQuestion.type === 'checkboxQues') {
         currentQuestion.choices.forEach(option => {
             const checkbox = document.createElement('input');
-            const confirm = document.createElement('button');
             checkbox.type = "checkbox";
             checkbox.value = option;
+            checkbox.classList.add('checkbox-design')
 
             checkbox.addEventListener("change", () => {
                 if (checkbox.checked) selectedCheckboxes.push(option);
@@ -190,9 +202,9 @@ function handleAnswer(answer, question) {
             label.innerText = option;
 
             const wrapper = document.createElement('div');
-            wrapper.append(checkbox, label);
+            wrapper.append(label);
+            label.prepend(checkbox);
             questionField.append(wrapper);
         });
     }
-    finishedQuiz
-// });
+});
